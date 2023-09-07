@@ -6,9 +6,9 @@ def get_args():
     parser.add_argument('--dataset', type=str, required=False, default="sim_gaussian")
 
     # parameters for tuning
-    parser.add_argument('--depth', type=int, required=False, default=10,
+    parser.add_argument('--depth', type=int, required=False, default=15,
                         help='the depth of the network (tree)')
-    parser.add_argument('--seed', type=int, default=2, metavar='S',
+    parser.add_argument('--seed', type=int, default=0, metavar='S',
                         help='random seed (default: 0)')
     parser.add_argument('--drop_type', type=str, default='node_dropconnect', 
                         choices=['node_dropconnect', 'none'])
@@ -25,7 +25,7 @@ def get_args():
                         help='shrinkage of the boosting method')
 
     # parameters that do not require frequent tuning
-    parser.add_argument('--back_n', type=int, default=0,
+    parser.add_argument('--back_n', type=int, default=1,
                         help='the depth of the backward network')
     parser.add_argument('--net_type', type=str, default='locally_constant', metavar='S',
                         choices=['locally_constant', 'locally_linear'])
@@ -37,9 +37,9 @@ def get_args():
                         choices=['SGD', 'AMSGrad', 'AdamW'])
     parser.add_argument('--batch-size', type=int, default=512, metavar='N',
                         help='input batch size for training (default: 64)')
-    parser.add_argument('--epochs', type=int, default=1, metavar='N',
+    parser.add_argument('--epochs', type=int, default=100, metavar='N',
                         help='number of epochs to train (default: 10)')
-    parser.add_argument('--lr', type=float, default=0.2, metavar='LR',
+    parser.add_argument('--lr', type=float, default=0.1, metavar='LR',
                         help='learning rate (default: 0.1), 0.1 seems good for molecule classification on fingerprints, may need to tune for other datasets / tasks.')
     parser.add_argument('--momentum', type=float, default=0.95, metavar='M',
                         help='SGD momentum (default: 0.9)')
@@ -47,7 +47,7 @@ def get_args():
                         help='disables CUDA training')
     parser.add_argument('--lr_step_size', type=int, default=50,
                         help='How often to decrease learning by gamma.')
-    parser.add_argument('--gamma', type=float, default=0.1,
+    parser.add_argument('--gamma', type=float, default=0.5,
                     help='LR is multiplied by gamma on schedule.')
 
     args = parser.parse_args()
