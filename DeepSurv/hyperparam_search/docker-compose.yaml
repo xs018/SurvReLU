@@ -1,0 +1,5 @@
+hp_search:
+  build: .
+  volumes:
+    - ../deepsurv/:/deepsurv
+    - ./logs:/shared/logs
