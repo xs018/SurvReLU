@@ -9,7 +9,7 @@ from utils.data_utils import load_dataset, format_dataset_to_df
 
 
 if __name__ == "__main__":
-    dataset = 'gbsg'
+    dataset = 'support'
     data = load_dataset(dataset)
 
     random_state = 0

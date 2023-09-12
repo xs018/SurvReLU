@@ -21,7 +21,7 @@ from utils.data_utils import load_dataset, format_dataset_to_df
 
 
 if __name__ == "__main__":
-    dataset = 'metabric'
+    dataset = 'support'
     data = load_dataset(dataset)
 
     random_state = 1234
@@ -39,18 +39,20 @@ if __name__ == "__main__":
         X_test, y_test = get_x_y(test_data_df, attr_labels=['E', 'T'], pos_label=1)
 
         ## label discretion
-        num_durations = 10
+        num_durations = 100
         labtrans = DeepHitSingle.label_transform(num_durations)
         get_target = lambda df: (df['T'].values, df['E'].values)
         y_train = labtrans.fit_transform(*get_target(train_data_df))
-        y_valid = labtrans.fit_transform(*get_target(val_data_df))
-        y_test = labtrans.fit_transform(*get_target(test_data_df))
+        y_valid = labtrans.transform(*get_target(val_data_df))
+        y_test = labtrans.transform(*get_target(test_data_df))
 
         train = (X_train.values, y_train)
         valid = (X_valid.values, y_valid)
         test = (X_test.values, y_test)
 
-        print(type(train[0]), type(y_train))
+        # print(type(train[0]), type(y_train))
+
+        durations_test, events_test = get_target(test_data_df)
 
         # define neural net
         in_features = X_train.shape[1]
@@ -70,7 +72,7 @@ if __name__ == "__main__":
 
         epochs = 10
         callbacks = [tt.callbacks.EarlyStopping()]
-        log = model.fit(train[0], train[1], batch_size, epochs, callbacks, val_data=test)
+        log = model.fit(train[0], train[1], batch_size, epochs, callbacks, val_data=valid)
         _ = log.plot()
 
         C_indinces = []
@@ -79,8 +81,8 @@ if __name__ == "__main__":
         for _ in tqdm(range(num_bootstrap)):
             bootstraped_indices = np.random.choice(indices, size=len(X_test), replace=True)
             bootstrapped_X_test = X_test.iloc[bootstraped_indices].values
-            bootstrapped_y_test_T = y_test[0][bootstraped_indices]
-            bootstrapped_y_test_E = y_test[1][bootstraped_indices]
+            bootstrapped_y_test_T = durations_test[bootstraped_indices]
+            bootstrapped_y_test_E = events_test[bootstraped_indices]
             
             surv = model.interpolate(10).predict_surv_df(bootstrapped_X_test)
             ev = EvalSurv(surv, bootstrapped_y_test_T, bootstrapped_y_test_E, censor_surv='km')
@@ -90,7 +92,7 @@ if __name__ == "__main__":
         c_index_upper = np.percentile(C_indinces, 97.5)
 
         surv = model.interpolate(10).predict_surv_df(test[0])
-        ev = EvalSurv(surv, test[1][0], test[1][1], censor_surv='km')
+        ev = EvalSurv(surv, durations_test, events_test, censor_surv='km')
         c_index = ev.concordance_td('antolini')
 
         print(f"C-Index (95% CI) ={c_index:.4f}({c_index_lower:.3f}, {c_index_upper:.3f})")
@@ -98,7 +100,7 @@ if __name__ == "__main__":
         kfold_data = data
 
         C_index_folds = []
-        C_indinces = []
+        # C_indinces = []
 
         for fold_idx, fold_data in enumerate(kfold_data):
             train_data, valid_data = fold_data['train'], fold_data['val']
@@ -113,10 +115,12 @@ if __name__ == "__main__":
             labtrans = DeepHitSingle.label_transform(num_durations)
             get_target = lambda df: (df['T'].values, df['E'].values)
             y_train = labtrans.fit_transform(*get_target(train_data_df))
-            y_valid = labtrans.fit_transform(*get_target(val_data_df))
+            y_valid = labtrans.transform(*get_target(val_data_df))
 
             train = (X_train.values.astype(np.float32), y_train)
             valid = (X_valid.values.astype(np.float32), y_valid)
+
+            durations_val, events_val = get_target(val_data_df)
 
             # print(type(train[0]), type(y_train))
 
@@ -144,27 +148,32 @@ if __name__ == "__main__":
             log = model.fit(train[0], train[1], batch_size, epochs, callbacks, val_data=valid)
             _ = log.plot()
 
-            # C_indinces = []
+            C_indinces = []
             indices = np.arange(len(X_valid))
 
             for _ in tqdm(range(num_bootstrap)):
                 bootstraped_indices = np.random.choice(indices, size=len(X_valid), replace=True)
                 bootstrapped_X_test = X_valid.iloc[bootstraped_indices].values.astype(np.float32)
-                bootstrapped_y_test_T = y_valid[0][bootstraped_indices]
-                bootstrapped_y_test_E = y_valid[1][bootstraped_indices]
+                bootstrapped_y_test_T = durations_val[bootstraped_indices]
+                bootstrapped_y_test_E = events_val[bootstraped_indices]
                 
                 surv = model.interpolate(10).predict_surv_df(bootstrapped_X_test)
                 ev = EvalSurv(surv, bootstrapped_y_test_T, bootstrapped_y_test_E, censor_surv='km')
                 C_indinces.append(ev.concordance_td('antolini'))
 
+            c_index_lower = np.percentile(C_indinces, 2.5)
+            c_index_upper = np.percentile(C_indinces, 97.5)
+
+            print(c_index_lower, c_index_upper)
+
             surv = model.interpolate(10).predict_surv_df(valid[0])
-            ev = EvalSurv(surv, valid[1][0], valid[1][1], censor_surv='km')
+            ev = EvalSurv(surv, durations_val, events_val, censor_surv='km')
             c_index = ev.concordance_td('antolini')
             print(f"Fold {fold_idx + 1}: C-index = {c_index}")
             C_index_folds.append(c_index)
 
-        c_index_lower = np.percentile(C_indinces, 2.5)
-        c_index_upper = np.percentile(C_indinces, 97.5)
+        # c_index_lower = np.percentile(C_indinces, 2.5)
+        # c_index_upper = np.percentile(C_indinces, 97.5)
 
         c_index = float(np.mean(C_index_folds))
     
