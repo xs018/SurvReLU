@@ -9,10 +9,10 @@ from utils.data_utils import load_dataset, format_dataset_to_df
 
 
 if __name__ == "__main__":
-    dataset = 'simulated_gaussian'
+    dataset = 'gbsg'
     data = load_dataset(dataset)
 
-    random_state = 20
+    random_state = 0
     np.random.seed(random_state)
     num_bootstrap = 100
 
@@ -46,10 +46,11 @@ if __name__ == "__main__":
         print(f"C-Index (95% CI) ={c_index:.4f}({c_index_lower:.4f}, {c_index_upper:.4f})")
         # print(f"Validation C-Index={model.score(X_valid, y_valid)}" )
         # print(f"Test C-Index={model.score(X_test, y_test)}" )
-
     else:
         kfold_data = data
         C_index_folds = []
+        # c_index_lowers = []
+        # c_index_uppers = []
         C_indinces = []
         for fold_idx, fold_data in enumerate(kfold_data):
             train_data, valid_data = fold_data['train'], fold_data['val']
@@ -64,6 +65,7 @@ if __name__ == "__main__":
             
             C_index_folds.append(model.score(X_valid, y_valid))
 
+            
             indices = np.arange(len(X_valid))
             for _ in tqdm(range(num_bootstrap)):
                 bootstraped_indices = np.random.choice(indices, size=len(X_valid), replace=True)
@@ -71,8 +73,13 @@ if __name__ == "__main__":
                 
                 C_indinces.append(model.score(bootstrapped_X_valid, bootstrapped_y_valid))
 
-        c_index = float(np.mean(C_index_folds))
         c_index_lower = np.percentile(C_indinces, 2.5)
         c_index_upper = np.percentile(C_indinces, 97.5)
+            # c_index_lowers.append(c_index_lower)
+            # c_index_uppers.append(c_index_upper)
 
-        print(f"C-Index (95% CI) ={c_index:.4f}({c_index_lower:.4f}, {c_index_upper:.4f})")
+        c_index = float(np.mean(C_index_folds))
+        # c_index_lower = float(np.mean(c_index_lowers))
+        # c_index_lower = float(np.mean(c_index_uppers))
+
+        print(f"C-Index (95% CI) = {c_index:.4f} ({c_index_lower:.3f}, {c_index_upper:.3f})")

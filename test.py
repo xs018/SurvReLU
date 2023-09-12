@@ -1,31 +1,27 @@
-# import time
+import torch
+from torchvision.models import resnet18
 
-# from lifelines import datasets
-# from sklearn.model_selection import train_test_split
 
-# from random_survival_forest.models import RandomSurvivalForest
-# from random_survival_forest.scoring import concordance_index
+model = resnet18(pretrained=True)
+model.eval()
 
-# rossi = datasets.load_rossi()
-# # Attention: duration column (time until event occurs) must be index 1, event column index 0 in y
-# y = rossi.loc[:, ["arrest", "week"]]
-# X = rossi.drop(["arrest", "week"], axis=1)
-# X, X_test, y, y_test = train_test_split(X, y, test_size=0.33, random_state=10)
+batchsize = 512
+x = torch.randn(batchsize, 3, 224, 224)
 
-# print("Start training...")
-# start_time = time.time()
-# rsf = RandomSurvivalForest(n_estimators=10, n_jobs=-1, random_state=10)
-# rsf = rsf.fit(X, y)
-# print(f'--- {round(time.time() - start_time, 3)} seconds ---')
-# y_pred = rsf.predict(X_test)
-# c_val = concordance_index(y_time=y_test["week"], y_pred=y_pred, y_event=y_test["arrest"])
-# print(f'C-index {round(c_val, 3)}')
+logits = []
+for i in range(batchsize):
+    x_i = x[i, ...]
+    x_i = x_i[None, ...]
+    
+    with torch.no_grad():
+        logit = model(x_i)
+        logits.append(logit)
 
-import pandas as pd
+logits_batched = torch.cat(logits, dim=0)
+print(logits_batched.shape)
+with torch.no_grad():
+    logits_orig = model(x)
+print(torch.eq(logits_batched, logits_orig))
+print(torch.allclose(logits_batched, logits_orig, atol=1e-5))
 
-csv_file = pd.read_csv("selected_weights.csv")
-# print(csv_file)
-
-csv_file['weight'] = csv_file['weight'].apply(lambda row: row.replace("weights", "selected_weights"))
-
-print(csv_file.iloc[0, 0].split("/"))
+print(logits_batched[0, 0], logits_orig[0, 0])

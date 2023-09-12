@@ -5,8 +5,17 @@ import numpy as np
 import pandas as pd
 from collections import defaultdict
 from sklearn.model_selection import KFold
+# from sksurv.preprocessing import OneHotEncoder
+from sklearn.preprocessing import StandardScaler
+from sklearn_pandas import DataFrameMapper
+
+# from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from pycox import datasets
+from pycox.preprocessing.feature_transforms import OrderedCategoricalLong
+
 import torch
 from torch.utils.data import Dataset
+import torchtuples as tt
 
 
 class SimpleDataset(Dataset):
@@ -218,36 +227,149 @@ def load_simulated_data(dataset="linear", reverse_duration=False):
     return train_data, valid_data, test_data, viz_data, datasets['viz']
 
 def load_real_data(dataset, n_folds=5):
-    assert dataset in ['support', 'metabric', 'flchain']
-    file_path = os.path.join("datasets", dataset, dataset + ".csv")
-    raw_csv = pd.read_csv(file_path)
+    if dataset == 'support':
+        df = datasets.support.read_df()
+        cols_standardize =  ['x0', 'x7', 'x8', 'x9', 'x10', 'x11', 'x12', 'x13']
+        cols_leave = ['x1', 'x4', 'x5']
+        cols_categorical =  ['x2', 'x3', 'x6']
+    elif dataset == 'metabric':
+        df = datasets.metabric.read_df()
+        cols_standardize = ['x0', 'x1', 'x2', 'x3', 'x8']
+        cols_leave = ['x4', 'x5', 'x6', 'x7']
+        cols_categorical = []
+    elif dataset == 'flchain':
+        df = datasets.flchain.read_df()
+        cols_standardize = ['age', 'kappa', 'lambda', 'creatinine']
+        cols_leave = ['sex', 'mgus']
+        cols_categorical = ['sample.yr', 'flc.grp']
+    elif dataset == 'gbsg':
+        df = datasets.gbsg.read_df()
+        cols_standardize = ['x3', 'x4', 'x5']
+        cols_leave = ['x0', 'x1', 'x2']
+        cols_categorical = ['x6']
+    else:
+        raise Exception()
+    
+    standardize = [([col], StandardScaler()) for col in cols_standardize]
+    leave = [(col, None) for col in cols_leave]
+    categorical = [(col, OrderedCategoricalLong()) for col in cols_categorical]
+
+    x_mapper_float = DataFrameMapper(standardize + leave)
+    x_mapper_long = DataFrameMapper(categorical)  # we need a separate mapper to ensure the data type 'int64'
+
+    x_fit_transform = lambda df: tt.tuplefy(x_mapper_float.fit_transform(df), x_mapper_long.fit_transform(df))
+    x_transform = lambda df: tt.tuplefy(x_mapper_float.transform(df), x_mapper_long.transform(df))
 
     KFold_data = []
     kf = KFold(n_splits=n_folds)
-    for i, (train_index, test_index) in enumerate(kf.split(raw_csv)):
-        train_data = raw_csv.iloc[train_index]
-        val_data = raw_csv.iloc[test_index]
+    for i, (train_index, test_index) in enumerate(kf.split(df)):
+        df_train = df.iloc[train_index]
+        df_val = df.iloc[test_index]
 
-        train_X_mean = train_data.iloc[:, :-2].mean(axis=0)
-        train_X_std = train_data.iloc[:, :-2].std(axis=0)
+        x_train_float = x_mapper_float.fit_transform(df_train)
+        x_valid_float = x_mapper_float.transform(df_val)
 
-        train_data_norm = copy.deepcopy(train_data)
-        train_data_norm.iloc[:, :-2] = (train_data_norm.iloc[:, :-2] - train_X_mean) / train_X_std
+        if len(categorical) > 0:
+            x_train_long = x_mapper_long.fit_transform(df_train)
+            x_valid_long = x_mapper_long.transform(df_val)
+
+            x_train = np.concatenate([x_train_float, x_train_long], axis=1)
+            x_valid = np.concatenate([x_valid_float, x_valid_long], axis=1)
+        else:
+            x_train = x_train_float
+            x_valid = x_valid_float
+
+        # print(x_train.shape, x_valid.shape)
+
+        # x_train = x_fit_transform(df_train)
+        # x_train = np.concatenate(x_train, axis=-1)
+        # x_valid = x_transform(df_val)
+        # x_valid = np.concatenate(x_valid, axis=-1)
+
+        y_train = df_train.iloc[:, -2:].values
+        y_valid = df_val.iloc[:, -2:].values
+
         train_data = {}
-        train_data['x'] = train_data_norm.iloc[:, :-2].values
-        train_data['t'] = train_data_norm.iloc[:, -2].values
-        train_data['e'] = train_data_norm.iloc[:, -1].values
+        train_data['x'] = x_train
+        train_data['t'] = y_train[:, 0]
+        train_data['e'] = y_train[:, 1]
 
-        val_data_norm = copy.deepcopy(val_data)
-        val_data_norm.iloc[:, :-2] = (val_data_norm.iloc[:, :-2] - train_X_mean) / train_X_std
         val_data = {}
-        val_data['x'] = val_data_norm.iloc[:, :-2].values
-        val_data['t'] = val_data_norm.iloc[:, -2].values
-        val_data['e'] = val_data_norm.iloc[:, -1].values
+        val_data['x'] = x_valid
+        val_data['t'] = y_valid[:, 0]
+        val_data['e'] = y_valid[:, 1]
         
         KFold_data.append({'train': train_data, 'val': val_data})
 
     return KFold_data
+
+# def load_real_data(dataset, n_folds=5):
+#     assert dataset in ['support', 'metabric', 'flchain']
+#     file_path = os.path.join("datasets", dataset, dataset + ".csv")
+#     raw_csv = pd.read_csv(file_path)
+
+#     if dataset == 'support':
+#         onehot_variables = ['x2', 'x3', 'x6'] 
+#         standardize_variables = ['x0', 'x7', 'x8', 'x9', 'x10', 'x11', 'x12', 'x13']
+#         # leave_variables = ['x1', 'x4', 'x5']
+#     elif dataset == 'metabric':
+#         onehot_variables = [] 
+#         standardize_variables = ['x0', 'x1', 'x2', 'x3', 'x8']
+#         # leave_variables = ['x4', 'x5', 'x6', 'x7']
+#     elif dataset == 'flchain':
+#         onehot_variables = ['sample.yr', 'flc.grp'] 
+#         standardize_variables = ['age', 'kappa', 'lambda', 'creatinine']
+#         # leave_variables = ['sex', 'mgus']
+
+#     if len(onehot_variables) > 0:
+#         encoder = OneHotEncoder()
+#         encoded_variables = pd.DataFrame(encoder.fit_transform(raw_csv[onehot_variables]).toarray())
+        
+#         raw_csv = raw_csv.drop(columns=onehot_variables)
+#         raw_csv = pd.concat([encoded_variables, raw_csv], axis=1)
+
+#         # print(raw_csv)
+
+#         # X_train_t = np.concatenate([X_train_t, encoder.fit_transform(X_train[onehot_variables]).toarray()], axis=1)
+#         # X_valid_t = np.concatenate([X_valid_t, encoder.transform(X_valid[onehot_variables]).toarray()], axis=1)
+
+#     KFold_data = []
+#     kf = KFold(n_splits=n_folds)
+#     for i, (train_index, test_index) in enumerate(kf.split(raw_csv)):
+#         train_data = raw_csv.iloc[train_index]
+#         val_data = raw_csv.iloc[test_index]
+
+#         X_train, y_train = train_data.iloc[:, :-2], train_data.iloc[:, -2:]
+#         X_valid, y_valid = val_data.iloc[:, :-2], val_data.iloc[:, -2:]
+
+#         # X_train_t = X_train[leave_variables].values
+#         # X_valid_t = X_valid[leave_variables].values
+        
+#         X_train_t = copy.deepcopy(X_train)
+#         X_valid_t = copy.deepcopy(X_valid)
+
+#         if len(standardize_variables) > 0:
+#             standardizer = StandardScaler()
+#             # X_train_t = np.concatenate([X_train_t, standardizer.fit_transform(X_train[standardize_variables])], axis=1)
+#             # X_valid_t = np.concatenate([X_valid_t, standardizer.transform(X_valid[standardize_variables])], axis=1)
+#             X_train_t[standardize_variables] = standardizer.fit_transform(X_train[standardize_variables])
+#             X_valid_t[standardize_variables] = standardizer.transform(X_valid[standardize_variables])
+
+#         X_train_t, X_valid_t = X_train_t.values, X_valid_t.values
+
+#         train_data = {}
+#         train_data['x'] = X_train_t
+#         train_data['t'] = y_train.values[:, 0]
+#         train_data['e'] = y_train.values[:, 1]
+
+#         val_data = {}
+#         val_data['x'] = X_valid_t
+#         val_data['t'] = y_valid.values[:, 0]
+#         val_data['e'] = y_valid.values[:, 1]
+        
+#         KFold_data.append({'train': train_data, 'val': val_data})
+
+#     return KFold_data
 
 
 def load_dataset(dataset):
@@ -274,4 +396,4 @@ def load_dataset(dataset):
 #         pass
 
 if __name__ == "__main__":
-    load_real_data('flchain')
+    load_real_data('gbsg')

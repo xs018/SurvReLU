@@ -9,7 +9,7 @@ from utils.data_utils import load_dataset, format_dataset_to_df, load_simulated_
 
 
 if __name__ == "__main__":
-    dataset = 'simulated_linear'
+    dataset = 'gbsg'
     data = load_dataset(dataset)
 
     random_state = 20
@@ -46,7 +46,6 @@ if __name__ == "__main__":
         print(f"C-Index (95% CI) ={c_index:.4f}({c_index_lower:.4f}, {c_index_upper:.4f})")
         # print(f"Validation C-Index={model.score(X_valid, y_valid)}" )
         # print(f"Test C-Index={model.score(X_test, y_test)}" )
-
     else:
         kfold_data = data
         C_index_folds = []
@@ -75,4 +74,4 @@ if __name__ == "__main__":
         c_index_lower = np.percentile(C_indinces, 2.5)
         c_index_upper = np.percentile(C_indinces, 97.5)
 
-        print(f"C-Index (95% CI) ={c_index:.4f}({c_index_lower:.4f}, {c_index_upper:.4f})")
+        print(f"C-Index (95% CI) = {c_index:.4f} ({c_index_lower:.3f}, {c_index_upper:.3f})")
