@@ -42,14 +42,11 @@ model = CoxNOSTree(
     optimizer=tt.optim.Adam
 )
 
-
 df_train = metabric.read_df()
 df_test = df_train.sample(frac=0.2)
 df_train = df_train.drop(df_test.index)
 df_val = df_train.sample(frac=0.2)
 df_train = df_train.drop(df_val.index)
-
-
 
 cols_standardize = ['x0', 'x1', 'x2', 'x3', 'x8']
 cols_leave = ['x4', 'x5', 'x6', 'x7']
@@ -84,5 +81,5 @@ log = model.fit(x_train, y_train, batch_size, epochs, callbacks, verbose,
 
 _ = model.compute_baseline_hazards()
 surv = model.predict_surv_df(x_test)
-ev = EvalSurv(surv, durations_test, events_test, censor_surv='km')
+ev = EvalSurv(surv, durations_test, events_test, censor_surv=None)
 print(ev.concordance_td())
