@@ -1,165 +1,103 @@
-import os
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning) 
+
 import numpy as np
-from tqdm import tqdm
+import matplotlib.pyplot as plt
+from sksurv.datasets import get_x_y
 
 import torch
-import torch.nn.functional as F
-import torch.optim as optim
-from torch.optim.lr_scheduler import StepLR
+import torchtuples as tt
 
-from utils.vis_utils import plot_train_curve, plot_risk_model_2
-from utils.common_utils import get_logger, norm_hr
-from utils.args_utils import get_args
-from utils.data_utils import load_dataset, SimpleDataset, FastTensorDataLoader
-from models.relu_oblique_tree import ReLUObliqueTree
-from losses import PartialLogLikelihood, calc_concordance_index, cox_ph_loss_sorted, CoxPHLoss, NLLLogistiHazardLoss, RankLoss
+from pycox.datasets import metabric
+from pycox.models import CoxPH
+from pycox.evaluation import EvalSurv
 
+from models.nostree import CoxNOSTree, CoxCCNOSTree
 
-def get_alpha(epoch, total_epoch):
-    return float(epoch) / float(total_epoch)
-
-def fit(args, model, train_dataloader, test_dataloader):
-    # define loss
-    criterion = CoxPHLoss()
-
-    # define optimizer and lr_scheduler
-    if args.optimizer == 'SGD':
-        optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, nesterov=True, weight_decay=0.0)
-    elif args.optimizer == 'AMSGrad':
-        optimizer = optim.Adam(model.parameters(), lr=args.lr, amsgrad=True, weight_decay=0.0)
-    elif args.optimizer == 'AdamW':
-        optimizer = optim.AdamW(model.parameters(), lr=args.lr, amsgrad=True, weight_decay=0.0)
-    scheduler = StepLR(optimizer, step_size=args.lr_step_size, gamma=args.gamma)
-    
-    best_score = -1e30
-    best_weight = None
-    start_epoch = 1  # start from epoch 1 or last checkpoint epoch
-
-    for epoch in range(start_epoch, args.epochs + start_epoch):
-        alpha = get_alpha(epoch, args.epochs)
-
-        model.train()
-        for batch_idx, batch in enumerate(train_dataloader):
-            X = batch['X']
-            E = batch['E'].reshape(-1, )
-            T = batch['T'].reshape(-1, )
-
-            logits, relu_masks = model(X)
-            loss = criterion(logits, T, E)
-
-            optimizer.zero_grad()
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-            optimizer.step()
-
-        pred_logits = []
-        fail_indicator = []
-        fail_time = []
-        model.eval()
-        with torch.no_grad():
-            for batch_idx, batch in enumerate(test_dataloader):
-                X = batch['X']
-                E = batch['E'].reshape(-1, )
-                T = batch['T'].reshape(-1, )
-
-                logits, relu_masks = model(X)
-                loss = criterion(logits, T, E)
-
-                pred_logits.extend(logits.detach().cpu().numpy().squeeze())
-                fail_indicator.extend(E.detach().cpu().numpy().squeeze())
-                fail_time.extend(T.detach().cpu().numpy().squeeze())
-
-        pred_logits = np.array(pred_logits)
-        fail_indicator = np.array(fail_indicator)
-        fail_time = np.array(fail_time)
-
-        val_CI = calc_concordance_index(pred_logits, fail_indicator, fail_time)
-        print(f"=== Epoch [{epoch}/{args.epochs}] C-Index:{val_CI:.4f} ===")
-        if val_CI > best_score:
-            best_score = val_CI
-            torch.save(model.state_dict(), "best_model.pt")
-
-        scheduler.step()
-
-    print(f"Best C-Index={best_score:.4f}")
-
-
-def predict(model, test_data, num_bootstrap=100):
-    model.load_state_dict(torch.load("best_model.pt"))
-
-    X_test = test_data['x']
-    T_test = test_data['t']
-    E_test = test_data['e']
-
-    C_indinces = []
-    indices = np.arange(len(X_test))
-
-    for _ in tqdm(range(num_bootstrap)):
-        bootstraped_indices = np.random.choice(indices, size=len(X_test), replace=True)
-        bootstrapped_X_test = X_test[bootstraped_indices] 
-        bootstrapped_T_test = T_test[bootstraped_indices] 
-        bootstrapped_E_test = E_test[bootstraped_indices] 
-
-        model.eval()
-        with torch.no_grad():
-            bootstrapped_X_test_torch = torch.from_numpy(bootstrapped_X_test).cuda()
-            logits, relu_masks = model(bootstrapped_X_test_torch)
-            logits_numpy = logits.detach().cpu().numpy().squeeze()
-
-            val_CI = calc_concordance_index(logits_numpy, bootstrapped_E_test, bootstrapped_T_test)
-            C_indinces.append(val_CI)
-    
-    c_index_lower = np.percentile(C_indinces, 2.5)
-    c_index_upper = np.percentile(C_indinces, 97.5)
-    
-    model.eval()
-    with torch.no_grad():
-        X_test_torch = torch.from_numpy(X_test).cuda()
-        logits, relu_masks = model(X_test_torch)
-        logits_numpy = logits.detach().cpu().numpy().squeeze()
-    
-    c_index = calc_concordance_index(logits_numpy, E_test, T_test)
-    print(f"C-Index (95% CI) ={c_index:.4f}({c_index_lower:.4f}, {c_index_upper:.4f})")
+from utils.data_utils import load_dataset, format_dataset_to_df
 
 if __name__ == "__main__":
-    dataset = 'simulated_gaussian'
+    dataset = 'metabric'
     data = load_dataset(dataset)
 
-    # get hyperparameters
-    args = get_args()
-
-    # set global seed
-    torch.manual_seed(args.seed)
-    np.random.seed(args.seed)
-
+    random_state = 1234
+    np.random.seed(random_state)
+    _ = torch.manual_seed(random_state)
     num_bootstrap = 100
 
     if 'simulated' in dataset:
-        args.input_dim = 10
-        args.output_dim = 1
+        pass
+    else:
+        kfold_data = data
 
-        train_data, valid_data, test_data, viz_data, viz_data_unnorm = data['train'], data['valid'], data['test'], data['viz'], data['viz_unnorm']
+        C_index_folds = []
+        # C_indinces = []
 
-        train_dataloader =  FastTensorDataLoader(torch.from_numpy(train_data['x']).float().cuda(), 
-                        torch.from_numpy(train_data['e']).float().cuda(),
-                        torch.from_numpy(train_data['t']).float().cuda(),
-                        tensor_names=('X', 'E', 'T'),
-                        batch_size=args.batch_size, shuffle=True)
+        for fold_idx, fold_data in enumerate(kfold_data):
+            train_data, valid_data = fold_data['train'], fold_data['val']
+            train_data_df = format_dataset_to_df(train_data, 'T', 'E')
+            X_train, y_train = get_x_y(train_data_df, attr_labels=['E', 'T'], pos_label=1)
+
+            val_data_df = format_dataset_to_df(valid_data, 'T', 'E')
+            X_valid, y_valid = get_x_y(val_data_df, attr_labels=['E', 'T'], pos_label=1)
+
+            get_target = lambda df: (df['T'].values, df['E'].values)
+            y_train = get_target(train_data_df)
+            y_valid = get_target(val_data_df)
+
+            # print(X_train.shape, X_valid.shape)
+
+            X_train = X_train.values.astype(np.float32)
+            X_valid = X_valid.values.astype(np.float32)
+
+            durations_val, events_val = get_target(val_data_df)
+            val = (X_valid, y_valid)
+            
+            # in_features = X_train.shape[1]
+            # num_nodes = [44, 44]
+            # out_features = 1
+            # batch_norm = True
+            # dropout = 0.2
+            # output_bias = False
+
+            # net = tt.practical.MLPVanilla(in_features, num_nodes, out_features, batch_norm,
+            #                             dropout, output_bias=output_bias)
+            input_dim = X_train.shape[1]
+            output_dim = 1
+            hidden_dim = 1
+            depth = 6
+            back_n = 1
+            drop_type = 'node_dropconnect'
+            net_type = 'locally_linear'
+            anneal = 'approx'
+
+            model = CoxNOSTree(input_dim=input_dim, 
+                                output_dim=output_dim, 
+                                hidden_dim=hidden_dim, 
+                                num_layer=depth, 
+                                num_back_layer=back_n, 
+                                dense=True, 
+                                drop_type=drop_type, 
+                                net_type=net_type, 
+                                approx=anneal,
+                                p_drop = 0.75,
+                                optimizer=tt.optim.Adam)
+            batch_size = 128
+            model.optimizer.set_lr(0.1)
+            epochs = 512
+            callbacks = [tt.callbacks.EarlyStopping()]
+            verbose = False
+
+            log = model.fit(X_train, y_train, batch_size, epochs, callbacks, verbose,
+                val_data=val, val_batch_size=batch_size)
+            
+            _ = model.compute_baseline_hazards()
+            surv = model.predict_surv_df(X_valid)
+            ev = EvalSurv(surv, durations_val, events_val, censor_surv='km')
+            C_index = ev.concordance_td()
+            print(C_index)
+            C_index_folds.append(C_index)
         
-        val_dataloader =  FastTensorDataLoader(torch.from_numpy(valid_data['x']).float().cuda(), 
-                        torch.from_numpy(valid_data['e']).float().cuda(),
-                        torch.from_numpy(valid_data['t']).float().cuda(),
-                        tensor_names=('X', 'E', 'T'),
-                        batch_size=args.batch_size, shuffle=False)
-
-        test_dataloader =  FastTensorDataLoader(torch.from_numpy(test_data['x']).float().cuda(), 
-                        torch.from_numpy(test_data['e']).float().cuda(),
-                        torch.from_numpy(test_data['t']).float().cuda(),
-                        tensor_names=('X', 'E', 'T'),
-                        batch_size=args.batch_size, shuffle=False)
-
-    # define network 
-    model = ReLUObliqueTree(input_dim=args.input_dim, output_dim=args.output_dim, hidden_dim=args.hidden_dim, num_layer=args.depth, num_back_layer=args.back_n, dense=True, drop_type=args.drop_type, net_type=args.net_type, approx=args.anneal).cuda()
-    
-    fit(args, model, train_dataloader, test_dataloader)
-    predict(model, test_data, num_bootstrap)
+        c_index_mean = float(np.mean(C_index_folds))
+        c_index_std = float(np.std(C_index_folds))
+        print(f"C-Index = {c_index_mean:.4f} (+- {c_index_std:4f})")

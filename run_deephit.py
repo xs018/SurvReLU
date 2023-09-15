@@ -111,7 +111,7 @@ if __name__ == "__main__":
             X_valid, y_valid = get_x_y(val_data_df, attr_labels=['E', 'T'], pos_label=1)
 
             ## label discretion
-            num_durations = 10
+            num_durations = 200
             labtrans = DeepHitSingle.label_transform(num_durations)
             get_target = lambda df: (df['T'].values, df['E'].values)
             y_train = labtrans.fit_transform(*get_target(train_data_df))
@@ -126,45 +126,45 @@ if __name__ == "__main__":
 
             # define neural net
             in_features = X_train.shape[1]
-            num_nodes = [32, 32]
+            num_nodes = [32, 32, 32]
             out_features = labtrans.out_features
             batch_norm = True
-            dropout = 0.1
+            dropout = 0.2
 
             net = tt.practical.MLPVanilla(in_features, num_nodes, out_features, batch_norm, dropout)
 
             model = DeepHitSingle(net, tt.optim.Adam, alpha=0.2, sigma=0.1, duration_index=labtrans.cuts)
-            batch_size = 256
+            batch_size = 512
             lr_finder = model.lr_finder(train[0], train[1], batch_size, tolerance=3)
             _ = lr_finder.plot()
 
             best_lr = lr_finder.get_best_lr()
             print(best_lr)
 
-            model.optimizer.set_lr(1e-2)
+            model.optimizer.set_lr(0.01)
 
             epochs = 100
             callbacks = [tt.callbacks.EarlyStopping()]
             log = model.fit(train[0], train[1], batch_size, epochs, callbacks, val_data=valid)
             _ = log.plot()
 
-            C_indinces = []
-            indices = np.arange(len(X_valid))
+            # C_indinces = []
+            # indices = np.arange(len(X_valid))
 
-            for _ in tqdm(range(num_bootstrap)):
-                bootstraped_indices = np.random.choice(indices, size=len(X_valid), replace=True)
-                bootstrapped_X_test = X_valid.iloc[bootstraped_indices].values.astype(np.float32)
-                bootstrapped_y_test_T = durations_val[bootstraped_indices]
-                bootstrapped_y_test_E = events_val[bootstraped_indices]
+            # for _ in tqdm(range(num_bootstrap)):
+            #     bootstraped_indices = np.random.choice(indices, size=len(X_valid), replace=True)
+            #     bootstrapped_X_test = X_valid.iloc[bootstraped_indices].values.astype(np.float32)
+            #     bootstrapped_y_test_T = durations_val[bootstraped_indices]
+            #     bootstrapped_y_test_E = events_val[bootstraped_indices]
                 
-                surv = model.interpolate(10).predict_surv_df(bootstrapped_X_test)
-                ev = EvalSurv(surv, bootstrapped_y_test_T, bootstrapped_y_test_E, censor_surv='km')
-                C_indinces.append(ev.concordance_td('antolini'))
+            #     surv = model.interpolate(10).predict_surv_df(bootstrapped_X_test)
+            #     ev = EvalSurv(surv, bootstrapped_y_test_T, bootstrapped_y_test_E, censor_surv='km')
+            #     C_indinces.append(ev.concordance_td('antolini'))
 
-            c_index_lower = np.percentile(C_indinces, 2.5)
-            c_index_upper = np.percentile(C_indinces, 97.5)
+            # c_index_lower = np.percentile(C_indinces, 2.5)
+            # c_index_upper = np.percentile(C_indinces, 97.5)
 
-            print(c_index_lower, c_index_upper)
+            # print(c_index_lower, c_index_upper)
 
             surv = model.interpolate(10).predict_surv_df(valid[0])
             ev = EvalSurv(surv, durations_val, events_val, censor_surv='km')
@@ -175,6 +175,8 @@ if __name__ == "__main__":
         # c_index_lower = np.percentile(C_indinces, 2.5)
         # c_index_upper = np.percentile(C_indinces, 97.5)
 
-        c_index = float(np.mean(C_index_folds))
+        c_index_mean = float(np.mean(C_index_folds))
+        c_index_std = float(np.std(C_index_folds))
     
-        print(f"C-Index (95% CI) = {c_index:.4f} ({c_index_lower:.3f}, {c_index_upper:.3f})")
+        # print(f"C-Index (95% CI) = {c_index:.4f} ({c_index_lower:.3f}, {c_index_upper:.3f})")
+        print(f"C-Index = {c_index_mean:.4f} (+- {c_index_std:4f})")
