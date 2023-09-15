@@ -3,19 +3,19 @@ import argparse
 def get_args():
     parser = argparse.ArgumentParser(description='PyTorch Locally Constant Networks')
     # Task specification
-    parser.add_argument('--dataset', type=str, required=False, default="sim_gaussian")
+    parser.add_argument('--dataset', type=str, required=False, default="metabric")
 
     # parameters for tuning
-    parser.add_argument('--depth', type=int, required=False, default=15,
+    parser.add_argument('--depth', type=int, required=False, default=10,
                         help='the depth of the network (tree)')
     parser.add_argument('--seed', type=int, default=0, metavar='S',
                         help='random seed (default: 0)')
     parser.add_argument('--drop_type', type=str, default='node_dropconnect', 
                         choices=['node_dropconnect', 'none'])
-    parser.add_argument('--p', type=float, default=0.5, 
+    parser.add_argument('--p', type=float, default=-1, 
                         help='the dropout rate, -1 means annealing from 1 - epoch / total epoch to 0.')
 
-    parser.add_argument('--reg', type=float, default=0.0, 
+    parser.add_argument('--reg', type=float, default=0.00001, 
                         help='the regularization strength.')
 
     # specific to the ensemble methods
@@ -25,7 +25,7 @@ def get_args():
                         help='shrinkage of the boosting method')
 
     # parameters that do not require frequent tuning
-    parser.add_argument('--back_n', type=int, default=1,
+    parser.add_argument('--back_n', type=int, default=0,
                         help='the depth of the backward network')
     parser.add_argument('--net_type', type=str, default='locally_constant', metavar='S',
                         choices=['locally_constant', 'locally_linear'])
@@ -39,7 +39,7 @@ def get_args():
                         help='input batch size for training (default: 64)')
     parser.add_argument('--epochs', type=int, default=100, metavar='N',
                         help='number of epochs to train (default: 10)')
-    parser.add_argument('--lr', type=float, default=0.1, metavar='LR',
+    parser.add_argument('--lr', type=float, default=0.3, metavar='LR',
                         help='learning rate (default: 0.1), 0.1 seems good for molecule classification on fingerprints, may need to tune for other datasets / tasks.')
     parser.add_argument('--momentum', type=float, default=0.95, metavar='M',
                         help='SGD momentum (default: 0.9)')
