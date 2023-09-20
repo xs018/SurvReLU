@@ -181,7 +181,15 @@ def load_cox_gaussian(file_path="datasets/gaussian_survival_data.h5", reverse_du
 
 def load_simulated_data(dataset="linear", reverse_duration=False):
     # Load dataset
-    file_path = "datasets/gaussian_survival_data.h5" if dataset == 'gaussian' else "datasets/linear_survival_data.h5"
+    if dataset == 'linear':
+        file_path = "datasets/linear_survival_data.h5"
+    elif dataset == 'linear_2d':
+        file_path = "datasets/linear_survival_data_2d.h5" 
+    elif dataset == 'gaussian':
+        file_path = "datasets/gaussian_survival_data.h5"
+    elif dataset == 'gaussian_2d':
+        file_path = "datasets/gaussian_survival_data_2d.h5" 
+
     datasets = load_datasets(file_path)
 
     # Standardize
@@ -376,8 +384,14 @@ def load_dataset(dataset):
     if dataset == 'simulated_linear':
         train_data, valid_data, test_data, viz_data, viz_data_unnorm = load_simulated_data('linear')
         data = {'train': train_data, 'valid': valid_data, 'test':test_data, 'viz':viz_data, 'viz_unnorm':viz_data_unnorm}
+    elif dataset == 'simulated_linear_2d':
+        train_data, valid_data, test_data, viz_data, viz_data_unnorm = load_simulated_data('linear_2d')
+        data = {'train': train_data, 'valid': valid_data, 'test':test_data, 'viz':viz_data, 'viz_unnorm':viz_data_unnorm}
     elif dataset == 'simulated_gaussian':
         train_data, valid_data, test_data, viz_data, viz_data_unnorm = load_simulated_data('gaussian')
+        data = {'train': train_data, 'valid': valid_data, 'test':test_data, 'viz':viz_data, 'viz_unnorm':viz_data_unnorm}
+    elif dataset == 'simulated_gaussian_2d':
+        train_data, valid_data, test_data, viz_data, viz_data_unnorm = load_simulated_data('gaussian_2d')
         data = {'train': train_data, 'valid': valid_data, 'test':test_data, 'viz':viz_data, 'viz_unnorm':viz_data_unnorm}
     else:
         data = load_real_data(dataset)

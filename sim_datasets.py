@@ -176,12 +176,12 @@ if __name__ == "__main__":
     
     
     sim = SimulatedData(5.0, 5.0, 'observed_p', observed_p=0.5, num_features = 2)
-    train_data = sim.generate_data(4000, method = 'gaussian')
-    valid_data = sim.generate_data(2000, method = 'gaussian')
-    test_data = sim.generate_data(2000, method = 'gaussian')
-    viz_data = sim.generate_data(10000, method = 'gaussian')
+    train_data = sim.generate_data(4000, method = 'linear')
+    valid_data = sim.generate_data(2000, method = 'linear')
+    test_data = sim.generate_data(2000, method = 'linear')
+    viz_data = sim.generate_data(10000, method = 'linear')
 
-    f = h5py.File('datasets/gaussian_survival_data_2d.h5','w')
+    f = h5py.File('datasets/linear_survival_data_2d.h5','w')
     train_grp = f.create_group('train')
     val_grp = f.create_group('valid')
     test_grp = f.create_group('test')
@@ -201,8 +201,8 @@ if __name__ == "__main__":
     
     f.close()
 
-    datasets = load_datasets("datasets/gaussian_survival_data_2d.h5")
-    print(datasets['train'])
+    # datasets = load_datasets("datasets/gaussian_survival_data_2d.h5")
+    # print(datasets['train'])
 
     # train_X = train_data['x']
     # train_y = {'e': train_data['e'], 't': train_data['t']}

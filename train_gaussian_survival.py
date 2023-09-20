@@ -6,6 +6,8 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.optim.lr_scheduler import StepLR
 
+from lookahead import Lookahead
+
 from utils.vis_utils import plot_train_curve, plot_risk_model_2
 from utils.common_utils import get_logger, norm_hr
 from utils.args_utils import get_args
@@ -50,9 +52,9 @@ if __name__ == "__main__":
                         tensor_names=('X', 'E', 'T'),
                         batch_size=args.batch_size, shuffle=True)
         
-        val_dataloader =  FastTensorDataLoader(torch.from_numpy(valid_data['x']).float().cuda(), 
-                        torch.from_numpy(valid_data['e']).float().cuda(),
-                        torch.from_numpy(valid_data['t']).float().cuda(),
+        val_dataloader =  FastTensorDataLoader(torch.from_numpy(test_data['x']).float().cuda(), 
+                        torch.from_numpy(test_data['e']).float().cuda(),
+                        torch.from_numpy(test_data['t']).float().cuda(),
                         tensor_names=('X', 'E', 'T'),
                         batch_size=args.batch_size, shuffle=False)
 
@@ -105,6 +107,8 @@ if __name__ == "__main__":
         optimizer = optim.AdamW(model.parameters(), lr=args.lr, amsgrad=True, weight_decay=0.0)
     scheduler = StepLR(optimizer, step_size=args.lr_step_size, gamma=args.gamma)
     
+    # optimizer = Lookahead(optimizer)
+
     best_score = -1e30
     start_epoch = 1  # start from epoch 1 or last checkpoint epoch
     if args.anneal == 'approx':
@@ -131,6 +135,7 @@ if __name__ == "__main__":
     val_losses = []
     train_CIs = []
     val_CIs = []
+    best_sparsity = 0.0
     for epoch in range(start_epoch, args.epochs + start_epoch):
         alpha = get_alpha(epoch, args.epochs)
 
@@ -147,19 +152,20 @@ if __name__ == "__main__":
             logits, relu_masks = model(X)
             loss = criterion(logits, T, E)
 
-            L1_reg = 0.0
-            for name, param in model.layer.named_parameters():
-                if 'weight' in name:
-                    L1_reg += param.data.abs().sum()
+            # L1_reg = 0.0
+            # for name, param in model.layer.named_parameters():
+            #     if 'weight' in name:
+            #         L1_reg += param.data.abs().sum()
 
-            loss = loss + args.reg * L1_reg
+            for idx, (name, param) in enumerate(model.layer.named_parameters()):
+                if 'weight' in name:
+                    param.data = softThresholding(param.data, args.reg)
+            # loss = loss + args.reg * L1_reg
 
             optimizer.zero_grad()
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             optimizer.step()
-
-            # model.layer.parameters() = softThresholding(model.layer.parameters(), 0.1)
 
             train_loss += loss.item()
 
@@ -189,7 +195,7 @@ if __name__ == "__main__":
                 E = batch['E'].reshape(-1, )
                 T = batch['T'].reshape(-1, )
 
-                logits, relu_masks = model(X)
+                logits, relu_masks = model(X, p=0, training=False)
                 loss = criterion(logits, T, E)
 
                 val_loss += loss.item()
@@ -197,6 +203,14 @@ if __name__ == "__main__":
                 pred_logits.extend(logits.detach().cpu().numpy().squeeze())
                 fail_indicator.extend(E.detach().cpu().numpy().squeeze())
                 fail_time.extend(T.detach().cpu().numpy().squeeze())
+        
+        den = 0.0
+        nem = 0.0
+        for idx, (name, param) in enumerate(model.layer.named_parameters()):
+                if 'weight' in name:
+                    nem += int((param.data < args.reg).sum())
+                    den += int(param.data.numel())
+        sparsity = nem / den
 
         pred_logits = np.array(pred_logits)
         fail_indicator = np.array(fail_indicator)
@@ -207,62 +221,64 @@ if __name__ == "__main__":
         val_CI = calc_concordance_index(pred_logits, fail_indicator, fail_time)
         val_CIs.append(val_CI)
         
-        logger.info(f"Epoch[{epoch}/{args.epochs}] train loss:{train_loss:.4f} train C-Index:{train_CI:.3f} val loss:{val_loss:.4f} val C-Index:{val_CI:.3f}")
+        logger.info(f"Epoch[{epoch}/{args.epochs}] train loss:{train_loss:.4f} train C-Index:{train_CI:.4f} val loss:{val_loss:.4f} val C-Index:{val_CI:.4f}")
 
         if val_CI > best_score:
-            state = {
-                    'model': model.state_dict(),
-                    'metric': [train_losses, val_losses, train_CIs, val_CIs]
-                     }
-            torch.save(state, best_model_name)
+            # state = {
+            #         'model': model.state_dict(),
+            #         'metric': [train_losses, val_losses, train_CIs, val_CIs]
+            #          }
+            # torch.save(state, best_model_name)
             best_score = val_CI
-
-        # "convergent" version
-        state = {
-                 'model': model.state_dict(),
-                 'metric': [train_losses, val_losses, train_CIs, val_CIs]
-                 }
+            best_sparsity = sparsity
+            
+    print(best_score, best_sparsity)
+        # # "convergent" version
+        # state = {
+        #          'model': model.state_dict(),
+        #          'metric': [train_losses, val_losses, train_CIs, val_CIs]
+        #          }
         
-        torch.save(state, last_model_name)
+        # torch.save(state, last_model_name)
 
-    ## plot training curve
-    plot_train_curve([train_losses, val_losses, train_CIs, val_CIs], train_curve_file)
+    # ## plot training curve
+    # plot_train_curve([train_losses, val_losses, train_CIs, val_CIs], train_curve_file)
 
-    # resume best weights
-    model.load_state_dict(torch.load(best_model_name)['model'])
+    # # resume best weights
+    # model.load_state_dict(torch.load(best_model_name)['model'])
 
-    # plot predicted risk surface
-    hr_pred = []
-    model.eval()
-    with torch.no_grad():
-        for batch_idx, batch in enumerate(viz_dataloader):
-            X = batch['X']
-            logits, relu_masks = model(X)
-            hr_pred.extend(logits.detach().cpu().numpy().squeeze())
+    # # plot predicted risk surface
+    # hr_pred = []
+    # model.eval()
+    # with torch.no_grad():
+    #     for batch_idx, batch in enumerate(viz_dataloader):
+    #         X = batch['X']
+    #         logits, relu_masks = model(X)
+    #         hr_pred.extend(logits.detach().cpu().numpy().squeeze())
             
-    hr_pred = np.array(hr_pred)
-    hr_pred = norm_hr(hr_pred)
-    hr_true = norm_hr(viz_data['hr'])
-    x_0 = viz_data_unnorm['x'][:, 0]
-    x_1 = viz_data_unnorm['x'][:, 1]
-    plot_risk_model_2(x_0, x_1, hr_true, hr_pred, (12, 5), (-1, 1), 'jet', best_hr_file)
+    # hr_pred = np.array(hr_pred)
+    # hr_pred = norm_hr(hr_pred)
+    # hr_true = norm_hr(viz_data['hr'])
+    # x_0 = viz_data_unnorm['x'][:, 0]
+    # x_1 = viz_data_unnorm['x'][:, 1]
+    # plot_risk_model_2(x_0, x_1, hr_true, hr_pred, (12, 5), (-1, 1), 'jet', best_hr_file)
 
-    # resume last weights
-    model.load_state_dict(torch.load(last_model_name)['model'])
+    # # resume last weights
+    # model.load_state_dict(torch.load(last_model_name)['model'])
 
-    # plot predicted risk surface
-    hr_pred = []
-    model.eval()
-    with torch.no_grad():
-        for batch_idx, batch in enumerate(viz_dataloader):
-            X = batch['X']
-            logits, relu_masks = model(X)
-            hr_pred.extend(logits.detach().cpu().numpy().squeeze())
+    # # plot predicted risk surface
+    # hr_pred = []
+    # model.eval()
+    # with torch.no_grad():
+    #     for batch_idx, batch in enumerate(viz_dataloader):
+    #         X = batch['X']
+    #         logits, relu_masks = model(X)
+    #         hr_pred.extend(logits.detach().cpu().numpy().squeeze())
             
-    hr_pred = np.array(hr_pred)
-    hr_pred = norm_hr(hr_pred)
-    hr_true = norm_hr(viz_data['hr'])
-    x_0 = viz_data_unnorm['x'][:, 0]
-    x_1 = viz_data_unnorm['x'][:, 1]
-    plot_risk_model_2(x_0, x_1, hr_true, hr_pred, (12, 5), (-1, 1), 'jet', last_hr_file)
+    # hr_pred = np.array(hr_pred)
+    # hr_pred = norm_hr(hr_pred)
+    # hr_true = norm_hr(viz_data['hr'])
+    # x_0 = viz_data_unnorm['x'][:, 0]
+    # x_1 = viz_data_unnorm['x'][:, 1]
+    # plot_risk_model_2(x_0, x_1, hr_true, hr_pred, (12, 5), (-1, 1), 'jet', last_hr_file)
     

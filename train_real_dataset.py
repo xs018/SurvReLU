@@ -160,17 +160,10 @@ if __name__ == "__main__":
             # logger.info(f"Epoch[{epoch}/{args.epochs}] train loss:{train_loss:.4f} train C-Index:{train_CI:.3f} val loss:{val_loss:.4f} val C-Index:{val_CI:.3f}")
 
         C_index_folds.append(best_score)
-
+    print(C_index_folds)
     C_index_mean = float(np.mean(C_index_folds))
     C_index_std = float(np.std(C_index_folds))
 
     print(f"C-Index = {C_index_mean:.4f} (+- {C_index_std:4f})")
-            # # "convergent" version
-            # state = {
-            #         'model': model.state_dict(),
-            #         'metric': [train_losses, val_losses, train_CIs, val_CIs]
-            #         }
-            
-            # torch.save(state, last_model_name)
 
     

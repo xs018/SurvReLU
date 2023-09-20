@@ -1,30 +1,50 @@
 import numpy as np
 import torch
+import torch.nn.functional as F
 import os
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 import matplotlib.pyplot as plt
 
-base_dir = "checkpoint/sim_gaussian_2d/approx_locally_constant"
-checkpoint = torch.load(f"{base_dir}/best_seed2_depth20_ckpt.pth")['model']
-# print(checkpoint.keys())
+from utils.common_utils import norm_hr
+from utils.data_utils import load_dataset
 
-xx1 = np.linspace(-1, 1, 2000)
-print(xx1.shape)
-for i in range(20):
-    w = checkpoint[f'layer.{i}.weight'].cpu().numpy().squeeze()
-    b = checkpoint[f'layer.{i}.bias'].cpu().numpy().squeeze()
+dataset = 'simulated_gaussian_2d'
+data = load_dataset(dataset)
+viz_data = data['viz_unnorm']
+hr_true = norm_hr(viz_data['hr'])
+x_0 = viz_data['x'][:, 0]
+x_1 = viz_data['x'][:, 1]
+
+viz_data = data['viz']
+x = torch.from_numpy(viz_data['x']).cuda()
+print(x.size())
+
+# clim = (-1, 1)
+# im = ax.scatter(x=x_0, y=x_1, c=hr_true, marker='.', cmap='jet', vmin=0, vmax=1)
+# im.set_clim(*clim)
+
+net = torch.load(f"NSOTree_{dataset}.pth")
+print(net)
+checkpoint = net.state_dict()
+net.eval()
+
+with torch.no_grad():
+    hr_pred = norm_hr(net(x).cpu().numpy().squeeze())
+
+fig, axes = plt.subplots(2, net.num_layer + 1, figsize=((net.num_layer + 1) * 2, 4))
+mask = np.ones_like(hr_pred).reshape(-1, )
+pattern_aggr = np.ones_like(hr_pred).reshape(-1, )
+for i in range(net.num_layer):
+    relu_mask = net.relu_masks[i].cpu().numpy().reshape(-1, )
+    pattern = net.patterns[i].cpu().numpy().reshape(-1, )
+    im = axes[0, i].scatter(x=x_0, y=x_1, c=relu_mask, marker='.', cmap='gray', vmin=0, vmax=1)
+    im = axes[1, i].scatter(x=x_0, y=x_1, c=pattern, marker='.', cmap='jet', vmin=0, vmax=1)
     
-    print(w)
+    mask = mask == relu_mask
+    pattern_aggr += pattern
+pattern_aggr /= pattern_aggr.max()
 
-    # w_norm1 = 
-
-    xx2 = (-w[0] / w[1]) * xx1 - b / w[1]
-    # a = 
-    plt.plot(xx1, xx2)
-
-    break
-
-plt.xlim(-1, 1)
-plt.ylim(-1, 1)
-
+axes[0, -1].scatter(x=x_0, y=x_1, c=mask, marker='.', cmap='gray', vmin=0, vmax=1)
+axes[1, -1].scatter(x=x_0, y=x_1, c=pattern_aggr, marker='.', cmap='jet', vmin=0, vmax=1)
+plt.tight_layout()
 plt.show()

@@ -82,7 +82,6 @@ def plot_risk_model_2(x_0, x_1, hr_true, hr_pred, figsize=(6,3), clim = (-3,3), 
     cb_ax = fig.add_axes([0.92, 0.1, 0.02, 0.8])
     fig.colorbar(im, cax=cb_ax)
   
-
     plt.subplots_adjust(hspace=0.5, wspace=0.01)
     
     # plt.tight_layout()
