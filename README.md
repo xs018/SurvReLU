@@ -5,7 +5,7 @@ This repository contains official implementation for the paper titled "SurvReLU:
 ## News :fire:
 - **July 16, 2024:** Congratulations ! Paper has been accepted by CIKM 2024 !
 
-![Inter](figs/tree_viz.png)
+![Inter](figs/tree.png)
 <img align="right" width="60%" height="100%" src="figs/performance.jpg">
 
 > **Abstract.** 
