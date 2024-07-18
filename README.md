@@ -5,8 +5,7 @@ This repository contains official implementation for the paper titled "SurvReLU:
 [![paper](https://img.shields.io/badge/arXiv-Paper-brightgreen)]()
 
 ## News :fire:
-- **July 16, 2024:** Congratulations ! Paper has been accepted by 33rd ACM International Conference on
-Information and Knowledge Management (CIKM 2024) !
+- **July 16, 2024:** Congratulations ! Paper has been accepted by CIKM 2024 !
 
 ![Inter](figs/tree.png)
 <img align="right" width="60%" height="100%" src="figs/performance.jpg">
