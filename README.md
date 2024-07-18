@@ -1,4 +1,4 @@
-# SurvReLU
+# [CIKM '24] SurvReLU
 This repository contains official implementation for the paper titled "SurvReLU: Inherently Interpretable Survival Analysis via Deep ReLU Networks" 
 [![paper](https://img.shields.io/badge/arXiv-Paper-brightgreen)](https://arxiv.org/abs/2404.00122)
 
