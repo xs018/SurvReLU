@@ -10,3 +10,4 @@ Survival analysis models time-to-event distributions with censorship. Recently, 
 Empirical studies on both simulated and real survival benchmark datasets show the effectiveness of the proposed SurvReLU in terms of performance and interoperability.
 
 > **Architecture**
+![Method](figs/network.png)
