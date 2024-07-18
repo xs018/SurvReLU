@@ -5,7 +5,7 @@ This repository contains official implementation for the paper titled "SurvReLU:
 ## News :fire:
 - **July 16, 2024:** Congratulations ! Paper has been accepted by CIKM 2024 !
 
-![Inter](figs/tree.png)
+![Inter](figs/tree_viz.png)
 <img align="right" width="60%" height="100%" src="figs/performance.jpg">
 
 > **Abstract.** 
@@ -15,9 +15,6 @@ Empirical studies on both simulated and real survival benchmark datasets show th
 > **Network Architecture**  
 ![Method](figs/network.png)
 
-
-> **Decision Boundary**  
-![Dec](figs/viz.png)
 
 # Usage
 ## 1. Prepare dataset
