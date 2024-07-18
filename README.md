@@ -13,3 +13,4 @@ Empirical studies on both simulated and real survival benchmark datasets show th
 
 > **Network Architecture**
 ![Method](figs/network.png)
+
