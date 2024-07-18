@@ -23,3 +23,14 @@ Empirical studies on both simulated and real survival benchmark datasets show th
 ## 1. Prepare dataset
 ## 2. Dependencies
 ## 3. Train From Scratch
+
+## Acknowledgements
+
+This code is built on the top of [pycox](https://github.com/havakv/pycox) and [locally constant network](https://github.com/guanghelee/iclr20-locally-constant-nets), we thank their efficient and neat codebase. 
+
+## Citation
+If you find our work is useful in your research, please consider raising a star  :star:  and citing:
+
+```
+
+```
