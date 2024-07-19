@@ -3,7 +3,7 @@
 # [CIKM '24] SurvReLU: Inherently Interpretable Survival Analysis via Deep ReLU Networks [![paper](https://img.shields.io/badge/arXiv-Paper-brightgreen)]()
 
 ## News :fire:
-- **July 16, 2024:** Congratulations! This paper has been accepted by CIKM 2024 [acceptance rate = 27 %]!
+- **July 16, 2024:** Congratulations! This paper has been accepted by CIKM 2024 **[acceptance rate = 27 %]**!
 
 ![Inter](figs/tree.png)
 <img align="right" width="60%" height="100%" src="figs/performance.jpg">
