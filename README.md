@@ -1,7 +1,9 @@
 
 ![paper](figs/cikm2024.jpg)
 # [CIKM '24] SurvReLU: Inherently Interpretable Survival Analysis via Deep ReLU Networks 
-[![paper](https://img.shields.io/badge/arXiv-Paper-brightgreen)]()
+[![Project Status: Active – The project has reached a stable, usable
+state and is being actively
+developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active) [![paper](https://img.shields.io/badge/arXiv-Paper-brightgreen)]()
 
 ## News :fire:
 - **July 16, 2024:** Congratulations! This paper has been accepted by CIKM 2024 **[acceptance rate = 27 %]**!
