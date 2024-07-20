@@ -6,8 +6,7 @@ state and is being actively
 developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active) [![paper](https://img.shields.io/badge/arXiv-Paper-brightgreen)]()
 
 ## News :fire:
-- **July 16, 2024:** Congratulations! This paper has been accepted by CIKM 2024 <span style="color:red">**[acceptance rate = 27 %]**</span> !
-
+- **July 16, 2024:** Congratulations! This paper has been accepted by CIKM 2024  $\color{lightgreen} \textbf{[acceptance rate = 27\\%]}\%$ ! 
 ![Inter](figs/tree.png)
 <img align="right" width="60%" height="100%" src="figs/performance.jpg">
 
