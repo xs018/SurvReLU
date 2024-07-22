@@ -3,7 +3,7 @@
 # [CIKM '24] SurvReLU: Inherently Interpretable Survival Analysis via Deep ReLU Networks 
 [![Project Status: Active – The project has reached a stable, usable
 state and is being actively
-developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active) [![paper](https://img.shields.io/badge/arXiv-Paper-brightgreen)]()
+developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active) [![paper](https://img.shields.io/badge/arXiv-Paper-brightgreen)](https://arxiv.org/abs/2407.14463)
 
 ## News :fire:
 - **July 16, 2024:** Congratulations! This paper has been accepted by CIKM 2024  $\color{lightgreen} \textbf{[acceptance rate = 27\\%]}\%$ ! 
@@ -31,5 +31,13 @@ This code is built on the top of [pycox](https://github.com/havakv/pycox) and [l
 If you find our work is useful in your research, please consider raising a star  :star:  and citing:
 
 ```
-
+@misc{sun2024survreluinherentlyinterpretablesurvival,
+      title={SurvReLU: Inherently Interpretable Survival Analysis via Deep ReLU Networks}, 
+      author={Xiaotong Sun and Peijie Qiu and Shengfan Zhang},
+      year={2024},
+      eprint={2407.14463},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/2407.14463}, 
+}
 ```
