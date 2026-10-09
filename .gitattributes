@@ -1,0 +1,15 @@
+* text=auto eol=lf
+
+*.csv text eol=lf
+*.py text eol=lf
+*.md text eol=lf
+
+*.h5 binary
+*.jpg binary
+*.npy binary
+*.npz binary
+*.pdf binary
+*.pkl binary
+*.pt binary
+*.pth binary
+*.pptx binary

@@ -73,7 +73,8 @@ class CoxNOSTree(models.cox._CoxPHBase):
         self.callbacks.give_model(self)
 
         stop = self.callbacks.on_fit_start()
-        for _ in range(epochs):
+        for epoch in range(epochs):
+            alpha = get_alpha(epoch, epochs)
             if stop:
                 break
             stop = self.callbacks.on_epoch_start()
@@ -84,14 +85,14 @@ class CoxNOSTree(models.cox._CoxPHBase):
                 if stop:
                     break
                 self.optimizer.zero_grad()
-                self.batch_metrics = self.compute_metrics(data, self.metrics)
+                self.batch_metrics = self.compute_metrics(data, alpha, self.metrics)
                 self.batch_loss = self.batch_metrics["loss"]
-                L1_loss = 0.0
-                for i, (name, param) in enumerate(self.net.layer.named_parameters()):
-                    if ('weight' in name) and i > 0:
-                        L1_loss += param.data.abs().sum()
+                # L1_loss = 0.0
+                # for i, (name, param) in enumerate(self.net.layer.named_parameters()):
+                #     if ('weight' in name) and i > 0:
+                #         L1_loss += param.data.abs().sum()
 
-                self.batch_loss += self.L1_reg * L1_loss
+                # self.batch_loss += self.L1_reg * L1_loss
                 # torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
                 self.batch_loss.backward()
                 stop = self.callbacks.before_step()
@@ -106,7 +107,7 @@ class CoxNOSTree(models.cox._CoxPHBase):
         self.callbacks.on_fit_end()
         return self.log
 
-    def compute_metrics(self, data, metrics=None):
+    def compute_metrics(self, data, alpha=None, metrics=None):
         """Function for computing the loss and other metrics.
 
         Arguments:
@@ -124,7 +125,13 @@ class CoxNOSTree(models.cox._CoxPHBase):
         input = self._to_device(input)
         target = self._to_device(target)
 
+        # print(type(input))
+
         if self.net.net_type == 'locally_constant':
+            # if self.p_drop != -1:
+            #     out = self.net(*input)
+            # else:
+            #     out = self.net(*input, 1-alpha, alpha)
             out = self.net(*input)
         elif self.net.net_type == 'locally_linear':
             out = self.net.normal_forward(*input)

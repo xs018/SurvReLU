@@ -1,5 +1,5 @@
 import warnings
-warnings.filterwarnings("ignore", category=FutureWarning) 
+warnings.filterwarnings("ignore", category=FutureWarning)
 import pickle
 import numpy as np
 import matplotlib.pyplot as plt
@@ -22,50 +22,50 @@ from utils.data_utils import load_dataset, format_dataset_to_df
 
 
 if __name__ == "__main__":
-    # dataset = 'simulated_linear_2d'
-    # data = load_dataset(dataset)
+    dataset = 'simulated_linear_2d'
+    data = load_dataset(dataset)
 
-    # random_state = 1234
-    # np.random.seed(random_state)
-    # _ = torch.manual_seed(random_state)
+    random_state = 1234
+    np.random.seed(random_state)
+    _ = torch.manual_seed(random_state)
 
-    # hidden_dim = 1
-    # depth = 2
-    # back_n =  0
-    # drop_type = 'node_dropconnect'
-    # p_dropout = 0.2
-    # net_type = 'locally_constant'
-    # anneal = 'approx'
-    # batch_size = 256
-    # epochs = 512
-    # lr = 0.1
-    # momentum = 0.95
+    hidden_dim = 1
+    depth = 2
+    back_n =  0
+    drop_type = 'node_dropconnect'
+    p_dropout = 0.2
+    net_type = 'locally_constant'
+    anneal = 'approx'
+    batch_size = 256
+    epochs = 512
+    lr = 0.1
+    momentum = 0.95
 
-    # train_data, valid_data, test_data, viz_data, viz_data_unnorm = data['train'], data['valid'], data['test'], data['viz'], data['viz_unnorm']
-    # net = NOTree(2, 
-    #             1, 
-    #             hidden_dim, 
-    #             depth, 
-    #             back_n, 
-    #             dense = True, 
-    #             drop_type = drop_type, 
-    #             net_type = net_type, 
-    #             approx = anneal)
-    
-    # loss = torch.nn.MSELoss()
-    # model = tt.Model(net, loss, tt.optim.SGD(lr=lr, momentum=momentum, nesterov=True))
-    
-    # callbacks = [tt.callbacks.EarlyStopping(), tt.callbacks.LRCosineAnnealing()]
-    # verbose = True
-    # # model.fit(train_data['x'], norm_hr(train_data['hr']).reshape(-1, 1), batch_size, epochs, callbacks, verbose, val_data=(valid_data['x'], norm_hr(valid_data['hr']).reshape(-1, 1)), val_batch_size=batch_size)
+    train_data, valid_data, test_data, viz_data, viz_data_unnorm = data['train'], data['valid'], data['test'], data['viz'], data['viz_unnorm']
+    net = NOTree(2,
+                1,
+                hidden_dim,
+                depth,
+                back_n,
+                dense = True,
+                drop_type = drop_type,
+                net_type = net_type,
+                approx = anneal)
 
-    # data = torch.from_numpy(viz_data['x']).cuda()
-    # data.requires_grad = True
+    loss = torch.nn.MSELoss()
+    model = tt.Model(net, loss, tt.optim.SGD(lr=lr, momentum=momentum, nesterov=True))
 
-    # model.net.eval()
+    callbacks = [tt.callbacks.EarlyStopping(), tt.callbacks.LRCosineAnnealing()]
+    verbose = True
+    # model.fit(train_data['x'], norm_hr(train_data['hr']).reshape(-1, 1), batch_size, epochs, callbacks, verbose, val_data=(valid_data['x'], norm_hr(valid_data['hr']).reshape(-1, 1)), val_batch_size=batch_size)
 
-    # print(model.net)
-    # y_pred = model.net(data, p=0).detach().cpu().numpy().squeeze()
+    data = torch.from_numpy(viz_data['x']).cuda()
+    data.requires_grad = True
+
+    model.net.eval()
+
+    print(model.net)
+    y_pred = model.net(data, p=0).detach().cpu().numpy().squeeze()
 
     # x_0 = viz_data_unnorm['x'][:, 0]
     # x_1 = viz_data_unnorm['x'][:, 1]
@@ -80,31 +80,31 @@ if __name__ == "__main__":
     #         'patterns': net.patterns,
     #     }, f)
 
-    with open("viz/viz_network.pkl", 'rb') as f:
-        cache = pickle.load(f)
+    # with open("viz/viz_network.pkl", 'rb') as f:
+    #     cache = pickle.load(f)
 
-    x_0, x_1 = cache['x0'], cache['x1']
-    hr_true, hr_pred = cache['hr_true'], cache['hr_pred']
-    relu_masks, patterns = cache['relu_masks'], cache['patterns']
+    # x_0, x_1 = cache['x0'], cache['x1']
+    # hr_true, hr_pred = cache['hr_true'], cache['hr_pred']
+    # relu_masks, patterns = cache['relu_masks'], cache['patterns']
 
-    fig, ax = plt.subplots(1, 2, figsize=(10, 4))
-    clim = (-1, 1)
-    im = ax[0].scatter(x=x_0, y=x_1, c=hr_true, marker='.', cmap='jet', vmin=0, vmax=1)
-    im.set_clim(*clim)
-    fig.colorbar(im, ax=ax[0])
-    # ax[0].set_title("$y_{true}$")
-    clim = (-1, 1)
-    im = ax[1].scatter(x=x_0, y=x_1, c=hr_pred, marker='.', cmap='jet', vmin=0, vmax=1)
-    im.set_clim(*clim)
-    fig.colorbar(im, ax=ax[1])
-    # ax[1].set_title("$h(\boldsymbol{x}) = x_0 + 2 x_1$")
-    plt.tight_layout()
-    plt.savefig("viz/hr.jpg", dpi=300)
-    plt.close('all')
+    # fig, ax = plt.subplots(1, 2, figsize=(10, 4))
+    # clim = (-1, 1)
+    # im = ax[0].scatter(x=x_0, y=x_1, c=hr_true, marker='.', cmap='jet', vmin=0, vmax=1)
+    # im.set_clim(*clim)
+    # fig.colorbar(im, ax=ax[0])
+    # # ax[0].set_title("$y_{true}$")
+    # clim = (-1, 1)
+    # im = ax[1].scatter(x=x_0, y=x_1, c=hr_pred, marker='.', cmap='jet', vmin=0, vmax=1)
+    # im.set_clim(*clim)
+    # fig.colorbar(im, ax=ax[1])
+    # # ax[1].set_title("$h(\boldsymbol{x}) = x_0 + 2 x_1$")
+    # plt.tight_layout()
+    # plt.savefig("viz/hr.jpg", dpi=300)
+    # plt.close('all')
 
-    num_layer = len(relu_masks)
+    # num_layer = len(relu_masks)
 
-    fig, axes = plt.subplots(num_layer+2, 2, figsize=(6, (num_layer+2) * 2 ))
+    # fig, axes = plt.subplots(num_layer+2, 2, figsize=(6, (num_layer+2) * 2 ))
     # mask = np.ones_like(hr_true).reshape(-1, )
     # pattern_aggr = np.zeros_like(hr_true).reshape(-1, )
     # for i in range(num_layer):
@@ -117,7 +117,7 @@ if __name__ == "__main__":
 
     #     mask = mask == relu_mask
     #     pattern_aggr += pattern
-        
+
     # xx = np.linspace(-1, 1, 1000)
     # axes[0, 0].plot(xx, -0.5 * xx - 0.5, c='red', linewidth=2)
     # axes[1, 0].plot(xx, -0.5 * xx + 0.5, c='blue', linewidth=2)
@@ -131,7 +131,7 @@ if __name__ == "__main__":
     # im.set_clim(*(0, 1))
     # im = axes[-2, 1].scatter(x=x_0, y=x_1, c=mask, marker='.', cmap='jet', vmin=0, vmax=1)
     # im.set_clim(*(-1, 1))
-    
+
     axes[-1, 0].set_axis_off()
     axes[-1, 1].set_axis_off()
     plt.subplots_adjust(wspace=0.3, hspace=0.3)

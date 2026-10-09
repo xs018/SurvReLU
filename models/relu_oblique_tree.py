@@ -12,6 +12,16 @@ def my_softplus_derivative(x, tau=1., threshold=20.):
     truncate_mask = (x > threshold).type(torch.cuda.FloatTensor)
     return truncate_mask + (1. - truncate_mask) / (1 + torch.exp(- (1. - truncate_mask) * x / tau) )
 
+def prox_plus(w):
+        """Projection onto non-negative numbers
+        """
+        below = w < 0
+        w[below] = 0
+        return w
+
+def softThresholding(w, lam=0.1):
+    return torch.sign(w) * prox_plus(torch.abs(w) - lam)
+
 
 class ReLUObliqueTree(nn.Module):
     def __init__(self, 
@@ -23,8 +33,9 @@ class ReLUObliqueTree(nn.Module):
                 dense = False, 
                 drop_type = 'none', 
                 net_type = 'locally_constant', 
-                approx = 'none'):
+                approx = 'none', reg=1e-4):
         super(ReLUObliqueTree, self).__init__()
+        self.reg =reg
 
         self.input_dim = input_dim
         self.output_dim = output_dim
@@ -109,6 +120,7 @@ class ReLUObliqueTree(nn.Module):
     def forward(self, init_layer, p=0, training=True, alpha=None, anneal='none'):
         assert(self.net_type == 'locally_constant')
         relu_masks = []
+        # self.relu_masks = []
         if len(init_layer.shape) == 4:
             bz = init_layer.shape[0]
             init_layer = init_layer.view(bz, -1)
@@ -122,6 +134,9 @@ class ReLUObliqueTree(nn.Module):
         for i in range(self.num_layer):
             if self.drop_type != 'node_dropconnect':
                 next_embed = self.layer[i](cur_embed)
+            if training:
+                self.layer[i].weight.data =  self.layer[i].weight.data / self.layer[i].weight.data.sum()
+                self.layer[i].weight.data = softThresholding(self.layer[i].weight.data, self.reg)
             w = self.layer[i].weight
             w = w.view(1, w.shape[0], w.shape[1]).expand(batch_size, -1, -1)   
 
@@ -134,7 +149,10 @@ class ReLUObliqueTree(nn.Module):
             else:
                 pass
 
+                # w = softThresholding(w, self.reg)
+
             relu_masks.append( (next_embed > 0) )
+            # self.relu_masks.append( (next_embed > 0) )
             if self.approx == 'approx':
                 neur_deriv = my_softplus_derivative(next_embed)
                 next_embed = my_softplus(next_embed)

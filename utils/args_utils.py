@@ -3,19 +3,19 @@ import argparse
 def get_args():
     parser = argparse.ArgumentParser(description='PyTorch Locally Constant Networks')
     # Task specification
-    parser.add_argument('--dataset', type=str, required=False, default="sim_gaussian")
+    parser.add_argument('--dataset', type=str, required=False, default="metabric")
 
     # parameters for tuning
-    parser.add_argument('--depth', type=int, required=False, default=30,
+    parser.add_argument('--depth', type=int, required=False, default=4,
                         help='the depth of the network (tree)')
     parser.add_argument('--seed', type=int, default=0, metavar='S',
                         help='random seed (default: 0)')
-    parser.add_argument('--drop_type', type=str, default='node_dropconnect', 
+    parser.add_argument('--drop_type', type=str, default='node_dropconnect',
                         choices=['node_dropconnect', 'none'])
-    parser.add_argument('--p', type=float, default=-1, 
+    parser.add_argument('--p', type=float, default=-1,
                         help='the dropout rate, -1 means annealing from 1 - epoch / total epoch to 0.')
 
-    parser.add_argument('--reg', type=float, default=5e-4, 
+    parser.add_argument('--reg', type=float, default=1e-5,
                         help='the regularization strength.')
 
     # specific to the ensemble methods
@@ -35,7 +35,7 @@ def get_args():
                         help='whether to anneal ReLU')
     parser.add_argument('--optimizer', type=str, default='SGD',
                         choices=['SGD', 'AMSGrad', 'AdamW'])
-    parser.add_argument('--batch-size', type=int, default=2048, metavar='N',
+    parser.add_argument('--batch-size', type=int, default=128, metavar='N',
                         help='input batch size for training (default: 64)')
     parser.add_argument('--epochs', type=int, default=50, metavar='N',
                         help='number of epochs to train (default: 10)')
