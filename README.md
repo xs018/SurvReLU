@@ -1,4 +1,3 @@
-
 ![paper](figs/cikm2024.jpg)
 # [CIKM '24] SurvReLU: Inherently Interpretable Survival Analysis via Deep ReLU Networks 
 [![Project Status: Active – The project has reached a stable, usable
@@ -20,10 +19,81 @@ Empirical studies on both simulated and real survival benchmark datasets show th
 ![Method](figs/network.png)
 
 
-# Usage
-## 1. Prepare dataset
-## 2. Dependencies
-## 3. Train From Scratch
+## Usage
+
+### 1. Environment
+
+Python 3.10 is recommended. The main training script currently uses CUDA tensors,
+so install a CUDA-enabled PyTorch build when training on a GPU.
+
+```bash
+python3.10 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+### 2. Data
+
+The repository includes the simulated HDF5 datasets under `datasets/`. The real
+benchmarks are loaded through `pycox` and support the following names:
+
+- `metabric`
+- `support`
+- `flchain`
+- `gbsg`
+
+The supported simulated names are `simulated_linear`, `simulated_linear_2d`,
+`simulated_gaussian`, and `simulated_gaussian_2d`.
+
+### 3. Train SurvReLU
+
+Train on a real benchmark with:
+
+```bash
+python train_real_dataset.py \
+      --dataset metabric \
+      --depth 4 \
+      --epochs 50 \
+      --batch-size 128 \
+      --optimizer SGD \
+      --lr 0.1
+```
+
+The best validation checkpoint is written to `viz/best_<dataset>.pth`. See all
+training options with:
+
+```bash
+python train_real_dataset.py --help
+```
+
+`run_nsotree.py` contains the pycox-based SurvReLU experiment used for the
+simulated and benchmark comparisons. Select its `dataset` variable from the names
+above before running:
+
+```bash
+python run_nsotree.py
+```
+
+### 4. Baselines and visualizations
+
+The top-level `run_cph.py`, `run_COXMLP.py`, `run_DeepHit.py`, `run_rsf.py`, and
+`run_survival_tree.py` scripts reproduce the corresponding baselines. Plotting
+and tree-inspection utilities are named `viz_*.py` and `vis_tree.py`. These
+experiment scripts keep their dataset and output settings near the top of each
+file so runs can be reproduced explicitly.
+
+### Repository layout
+
+| Path | Purpose |
+| --- | --- |
+| `models/` | SurvReLU and neural survival model implementations |
+| `baselines/` | Survival tree and random survival forest implementations |
+| `utils/` | Dataset loading, argument parsing, logging, and visualization helpers |
+| `datasets/` | Included simulated and benchmark data files |
+| `checkpoint/` | Curated experiment checkpoints |
+| `viz/` | Evaluation outputs and generated figures |
+| `DeepSurv/` | Vendored DeepSurv baseline and its original license |
 
 ## Acknowledgements
 
